@@ -8,6 +8,9 @@ dist/
 .venv/
 venv/
 
+# Personal prep notes (not part of the submission)
+DEMO_SCRIPT.md
+
 # GigRadar local state / user config
 config.toml
 *.db
