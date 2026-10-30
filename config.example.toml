@@ -1,0 +1,42 @@
+# GigRadar configuration — copy to config.toml and edit.
+# Everything here has a sensible built-in default, so this file is optional.
+
+[gigradar]
+# Keywords describing the work you want. Matched (case-insensitive) against
+# each posting's title, company, tags and description.
+stack = [
+    "python", "aws", "terraform", "java", "cloud",
+    "infrastructure", "lambda", "devops", "kubernetes", "api", "backend",
+]
+
+# Phrases that signal a low-quality / risky gig. Each match lowers the score.
+red_flags = [
+    "build everything", "do everything", "rockstar", "ninja",
+    "unpaid", "equity only", "cheap", "lowest bid", "urgent urgent",
+]
+
+# Positive signals of a serious, well-scoped client. Each match raises the score.
+quality_signals = [
+    "scope", "milestone", "budget", "long-term", "contract",
+    "detailed", "requirements", "documentation", "senior",
+]
+
+# Minimum acceptable hourly rate in USD. Postings below score lower; annual
+# salaries are converted to an approximate hourly rate (÷ 2080 hrs/yr).
+min_hourly_rate = 50.0
+
+# Minimum score (0–100) required to fire a desktop notification on `run`.
+notify_threshold = 70.0
+
+# Which sources to poll. Available: remoteok, remotive, weworkremotely, reddit.
+sources = ["remoteok", "remotive", "weworkremotely", "reddit"]
+
+# Relative importance of each scoring component. These are weights, not
+# percentages — the engine sums the positive components and subtracts the
+# red-flag penalty, then clamps to 0–100.
+[gigradar.weights]
+stack_match      = 40.0
+rate             = 25.0
+quality          = 20.0
+recency          = 15.0
+red_flag_penalty = 30.0
