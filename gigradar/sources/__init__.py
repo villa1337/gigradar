@@ -8,16 +8,20 @@ a source is just editing the ``sources`` list in config.
 from __future__ import annotations
 
 from ..models import Source
+from .hackernews import HackerNewsFreelanceSource
+from .reddit import RedditForHireSource
 from .remoteok import RemoteOKSource
 from .remotive import RemotiveSource
 from .weworkremotely import WeWorkRemotelySource
-from .reddit import RedditForHireSource
 
 _REGISTRY = {
-    RemoteOKSource.name: RemoteOKSource,
+    # Genuinely freelance / contract sources first.
+    HackerNewsFreelanceSource.name: HackerNewsFreelanceSource,
+    RedditForHireSource.name: RedditForHireSource,
+    # Remote-job boards (contract postings mixed in with full-time).
     RemotiveSource.name: RemotiveSource,
     WeWorkRemotelySource.name: WeWorkRemotelySource,
-    RedditForHireSource.name: RedditForHireSource,
+    RemoteOKSource.name: RemoteOKSource,
 }
 
 

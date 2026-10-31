@@ -10,16 +10,16 @@ into one command.
 
 ```
 GigRadar 1.0.0 — fetching 4 source(s)…
-  remoteok           99 postings
+  hackernews         15 postings
+  reddit             15 postings
   remotive           12 postings
   weworkremotely     25 postings
-  reddit              9 postings
 
-Fetched 145 | new 144 | stored 144
-  ★  93.2  Solutions Engineer                [remoteok]
-  ★  84.8  Principal Software Engineer       [remoteok]
-  ★  81.7  Senior DevOps Engineer            [remoteok]
-  ★  71.2  Senior Infrastructure Engineer    [weworkremotely]
+Fetched 67 | new 67 | stored 67
+  ★  72.1  Philadelphia & New York | Remote US        [hackernews]
+  ★  70.5  Boulder, CO | Remote | US Time Zone         [hackernews]
+  ★  69.2  Flanksource | Remote First                  [hackernews]
+  ★  64.1  Utility Operations Application Specialist   [reddit]
 ```
 
 ## Why this exists
@@ -88,15 +88,18 @@ full annotated list.
 
 ## How scoring works
 
-Each posting gets a **0–100** score from a weighted sum of four positive
+Each posting gets a **0–100** score from a weighted sum of five positive
 components minus a red-flag penalty:
 
 ```
-score = stack_match·40 + rate·25 + quality·20 + recency·15 − red_flags·30
+score = stack_match·30 + contract·25 + rate·20 + quality·15 + recency·10 − red_flags·30
 ```
 
 - **Stack match** — how many of your stack keywords appear (diminishing returns
   so one keyword-stuffed post can't dominate).
+- **Contract fit** — rewards genuine freelance/contract/hourly language and
+  penalizes full-time salaried-employee language (401k, benefits, W-2). This is
+  what keeps GigRadar aimed at *gigs* rather than full-time roles.
 - **Rate** — pay vs. your floor. Uses structured salary fields when present,
   otherwise parses `$/hr` or `$Nk` from the text. Unknown pay is treated as
   neutral, not punished.
@@ -110,19 +113,28 @@ tune — see [`gigradar/scoring.py`](gigradar/scoring.py).
 
 ## Data sources
 
-All sources are **public and keyless**:
+All sources are **public and keyless**. GigRadar is a *freelance* monitor, so
+the genuinely freelance sources are enabled by default and the full-time remote
+boards are opt-in:
 
-| Source | Type | Notes |
-| --- | --- | --- |
-| RemoteOK | JSON API | Remote tech jobs. |
-| Remotive | JSON API | Remote software jobs. |
-| We Work Remotely | RSS 2.0 | Remote programming category. |
-| Reddit r/forhire | Atom | Filtered to `[Hiring]` posts only. |
+| Source | Type | Default | Notes |
+| --- | --- | --- | --- |
+| Hacker News | JSON API | ✅ on | Monthly "Freelancer? Seeking freelancer?" thread — real client gigs. |
+| Reddit r/forhire | Atom | ✅ on | Filtered to `[Hiring]` posts (clients offering paid work). |
+| Remotive | JSON API | ✅ on | Remote software jobs (contract + full-time; scorer sorts it out). |
+| We Work Remotely | RSS 2.0 | ✅ on | Remote programming category. |
+| RemoteOK | JSON API | ⬜ off | Almost entirely full-time salaried roles; enable in config if wanted. |
 
+> **Why these sources?** My first cut leaned on RemoteOK/WWR, but checking the
+> live data showed they return mostly *full-time* salaried roles, not freelance
+> gigs. I re-aimed at genuinely freelance feeds (Hacker News' freelancer thread,
+> Reddit `[Hiring]`) and added a **contract-fit** scoring component so true gigs
+> outrank salaried roles. RemoteOK is still available but off by default.
+>
 > **Note on Upwork:** Upwork discontinued its public RSS feeds in August 2024
-> (specifically to curb automated bidding), and scraping its site violates its
-> terms. GigRadar deliberately uses only legitimate, public feeds. Adding a new
-> source is a ~40-line file implementing the `Source` interface.
+> (to curb automated bidding), and scraping its site violates its terms.
+> GigRadar deliberately uses only legitimate, public feeds. Adding a new source
+> is a ~40-line file implementing the `Source` interface.
 
 ## Architecture
 
@@ -136,12 +148,13 @@ gigradar/
 ├── notify.py        # cross-platform desktop notifications
 ├── cli.py           # argparse CLI (run / list / sources)
 └── sources/         # one file per job board, behind a common interface
-    ├── remoteok.py
+    ├── hackernews.py
+    ├── reddit.py
     ├── remotive.py
     ├── weworkremotely.py
-    └── reddit.py
+    └── remoteok.py
 tests/
-└── test_scoring.py  # 22 unit tests, stdlib unittest
+└── test_scoring.py  # 26 unit tests, stdlib unittest
 ```
 
 The flow: **sources** fetch and normalize → **scoring** ranks → **store** dedups
@@ -164,8 +177,9 @@ notifies you about genuinely new postings.
 python3 -m unittest discover -s tests -v
 ```
 
-22 tests cover stack matching, rate parsing, quality/recency/red-flag scoring,
-and end-to-end ranking — all stdlib, nothing to install.
+26 tests cover stack matching, the contract-fit classifier, rate parsing,
+quality/recency/red-flag scoring, and end-to-end ranking — all stdlib, nothing
+to install.
 
 ## Storage
 

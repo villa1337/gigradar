@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from gigradar.config import Config
 from gigradar.models import JobPosting
 from gigradar.scoring import (
+    contract_score,
     extract_hourly_rate,
     quality_score,
     rate_score,
@@ -165,6 +166,41 @@ class RedFlagTests(unittest.TestCase):
         self.assertTrue(reasons)
 
 
+class ContractScoreTests(unittest.TestCase):
+    def setUp(self):
+        self.cfg = Config().normalized()
+
+    def test_freelance_language_scores_high(self):
+        p = make_posting(
+            title="Freelance React contractor",
+            description="Short-term project-based contract, hourly rate.",
+        )
+        score, reasons = contract_score(p, self.cfg)
+        self.assertGreater(score, 0.6)
+        self.assertTrue(any("contract" in r for r in reasons))
+
+    def test_fulltime_language_scores_low(self):
+        p = make_posting(
+            title="Senior Engineer (Full-time)",
+            description="Permanent W-2 employee, 401k, benefits package, PTO.",
+        )
+        score, reasons = contract_score(p, self.cfg)
+        self.assertLess(score, 0.3)
+        self.assertTrue(any("full-time" in r for r in reasons))
+
+    def test_neutral_when_undetermined(self):
+        p = make_posting(title="Developer", description="We build software.")
+        score, _ = contract_score(p, self.cfg)
+        self.assertAlmostEqual(score, 0.3, places=5)
+
+    def test_freelance_beats_fulltime(self):
+        gig = make_posting(description="freelance hourly contract gig")
+        fte = make_posting(description="full-time permanent employee with benefits 401k")
+        s_gig, _ = contract_score(gig, self.cfg)
+        s_fte, _ = contract_score(fte, self.cfg)
+        self.assertGreater(s_gig, s_fte)
+
+
 class EndToEndScoreTests(unittest.TestCase):
     def setUp(self):
         self.cfg = Config(min_hourly_rate=50.0).normalized()
@@ -172,10 +208,10 @@ class EndToEndScoreTests(unittest.TestCase):
 
     def test_great_gig_beats_bad_gig(self):
         good = make_posting(
-            title="Senior Python / AWS Terraform contractor",
+            title="Senior Python / AWS Terraform freelance contractor",
             description=("Detailed scope with milestones and budget. "
-                         "Paying $100/hr for a well-defined backend API project. "
-                         + "More context. " * 40),
+                         "Freelance contract, paying $100/hr for a well-defined "
+                         "backend API project. " + "More context. " * 40),
             posted_at=self.now,
         )
         bad = make_posting(

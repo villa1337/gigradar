@@ -14,12 +14,14 @@ this because it's a real itch of my own and it has a genuinely interesting core
 
 GigRadar is a small Python application with four clean stages:
 
-1. **Ingest** — one module per job board (RemoteOK, Remotive, We Work Remotely,
-   Reddit r/forhire), each implementing a tiny `Source` interface and mapping
-   its payload onto a single normalized `JobPosting` schema.
+1. **Ingest** — one module per source (Hacker News' monthly freelancer thread,
+   Reddit r/forhire, Remotive, We Work Remotely, and optionally RemoteOK), each
+   implementing a tiny `Source` interface and mapping its payload onto a single
+   normalized `JobPosting` schema.
 2. **Score** — pure functions turn a posting into a 0–100 score: stack-keyword
-   match (with diminishing returns), pay vs. a configurable floor, quality
-   signals, recency decay, minus red-flag penalties.
+   match (with diminishing returns), contract-fit (freelance vs. full-time
+   language), pay vs. a configurable floor, quality signals, recency decay,
+   minus red-flag penalties.
 3. **Store** — SQLite dedups across runs so only genuinely new postings surface.
 4. **Present** — a CLI shows a ranked table and fires a desktop notification for
    high-scorers.
@@ -36,6 +38,16 @@ GigRadar is a small Python application with four clean stages:
   it killed its public RSS in Aug 2024 (to stop bot bidding) and scraping it
   violates its terms. I pivoted to public, keyless feeds. This kept the tool
   ethical and ToS-compliant and actually simplified ingestion.
+- **Validated against real data, then re-aimed the sources.** My first working
+  version leaned on RemoteOK/WWR — but running it showed they return almost
+  entirely *full-time* salaried roles, not freelance gigs (0 of 99 RemoteOK
+  postings were tagged contract/freelance). Rather than redefine the problem to
+  match a weak implementation, I fixed the implementation: added Hacker News'
+  monthly freelancer thread and Reddit `[Hiring]` as genuinely freelance
+  sources, introduced a **contract-fit** scoring component that rewards
+  freelance/hourly language and penalizes salaried-employee language, and turned
+  RemoteOK off by default. That's the difference between a job-board aggregator
+  and an actual freelance radar.
 - **Pure, weighted scoring.** Keeping scoring as side-effect-free functions made
   it unit-testable (22 tests) and easy to tune via config weights. A weighted
   linear model is transparent and explainable — every posting carries its score

@@ -9,6 +9,20 @@ stack = [
     "infrastructure", "lambda", "devops", "kubernetes", "api", "backend",
 ]
 
+# Signals of genuine freelance / contract work (raises score).
+contract_signals = [
+    "freelance", "freelancer", "contract", "contractor", "1099",
+    "project-based", "short-term", "gig", "hourly", "/hr",
+    "consultant", "consulting", "fixed price", "part-time", "ad hoc",
+]
+
+# Signals of a full-time salaried role (lowers score — not freelance).
+fte_signals = [
+    "full-time", "permanent", "w-2", "401k", "benefits package",
+    "paid time off", "pto", "health insurance", "stock options",
+    "salaried", "annual salary", "employee", "fte",
+]
+
 # Phrases that signal a low-quality / risky gig. Each match lowers the score.
 red_flags = [
     "build everything", "do everything", "rockstar", "ninja",
@@ -26,17 +40,21 @@ quality_signals = [
 min_hourly_rate = 50.0
 
 # Minimum score (0–100) required to fire a desktop notification on `run`.
-notify_threshold = 70.0
+notify_threshold = 60.0
 
-# Which sources to poll. Available: remoteok, remotive, weworkremotely, reddit.
-sources = ["remoteok", "remotive", "weworkremotely", "reddit"]
+# Which sources to poll. Available:
+#   hackernews, reddit, remotive, weworkremotely, remoteok
+# Defaults are freelance-first; remoteok is omitted because it is almost
+# entirely full-time salaried roles. Add it if you want those too.
+sources = ["hackernews", "reddit", "remotive", "weworkremotely"]
 
 # Relative importance of each scoring component. These are weights, not
 # percentages — the engine sums the positive components and subtracts the
 # red-flag penalty, then clamps to 0–100.
 [gigradar.weights]
-stack_match      = 40.0
-rate             = 25.0
-quality          = 20.0
-recency          = 15.0
+stack_match      = 30.0
+contract         = 25.0
+rate             = 20.0
+quality          = 15.0
+recency          = 10.0
 red_flag_penalty = 30.0

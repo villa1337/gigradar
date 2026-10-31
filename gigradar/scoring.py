@@ -104,6 +104,30 @@ def rate_score(posting: JobPosting, cfg: Config) -> tuple[float, list[str]]:
     return 0.5, ["pay not stated"]
 
 
+def contract_score(posting: JobPosting, cfg: Config) -> tuple[float, list[str]]:
+    """How freelance/contract a posting looks, on a 0..1 scale.
+
+    Rewards contract/freelance/hourly language and penalizes full-time
+    salaried-employee language. This component is what re-aims GigRadar at
+    genuine gigs rather than full-time remote roles.
+    """
+    hay = posting.haystack
+    contract_hits = [s for s in cfg.contract_signals if s and s in hay]
+    fte_hits = [s for s in cfg.fte_signals if s and s in hay]
+
+    # Each contract signal adds, each FTE signal subtracts, from a neutral 0.3
+    # baseline so an undetermined posting isn't unfairly buried.
+    raw = 0.3 + _clamp01(len(contract_hits) / 2.0) - _clamp01(len(fte_hits) / 2.0) * 0.6
+    score = _clamp01(raw)
+
+    reasons: list[str] = []
+    if contract_hits:
+        reasons.append(f"contract: {', '.join(contract_hits[:4])}")
+    if fte_hits:
+        reasons.append(f"full-time signals: {', '.join(fte_hits[:3])}")
+    return score, reasons
+
+
 def quality_score(posting: JobPosting, cfg: Config) -> tuple[float, list[str]]:
     """Positive signals of a serious, well-scoped client."""
     hay = posting.haystack
@@ -153,6 +177,7 @@ def score_posting(posting: JobPosting, cfg: Config, now: datetime | None = None)
     """Compute the weighted score and attach it (plus reasons) to the posting."""
     w = cfg.weights
     stack_s, stack_r = stack_match_score(posting, cfg)
+    contract_s, contract_r = contract_score(posting, cfg)
     rate_s, rate_r = rate_score(posting, cfg)
     qual_s, qual_r = quality_score(posting, cfg)
     rec_s, rec_r = recency_score(posting, now)
@@ -160,11 +185,12 @@ def score_posting(posting: JobPosting, cfg: Config, now: datetime | None = None)
 
     raw = (
         stack_s * w.stack_match
+        + contract_s * w.contract
         + rate_s * w.rate
         + qual_s * w.quality
         + rec_s * w.recency
         - flag_s * w.red_flag_penalty
     )
     posting.score = round(max(0.0, min(100.0, raw)), 1)
-    posting.score_reasons = stack_r + rate_r + qual_r + rec_r + flag_r
+    posting.score_reasons = stack_r + contract_r + rate_r + qual_r + rec_r + flag_r
     return posting
